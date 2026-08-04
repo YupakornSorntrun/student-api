@@ -64,7 +64,19 @@ router.get("/:id", (req, res) => {
     - ถ้ามีนักศึกษาชื่อซ้ำกับข้อมูลที่มีอยู่แล้ว ให้ตอบกลับด้วย Status Code 409 (Conflict) พร้อมข้อความแจ้งเตือน
 */
 router.post("/", (req, res) => {
-  const { name, major, email } = req.body;
+  const { name, major, email} = req.body;
+
+  if (
+    typeof name !== "string" ||
+    typeof major !== "string" ||
+    typeof email !== "string" 
+  )
+  {
+    return sendError(res,400,"VALIDATION_ERROR",
+"ข้อมูลต้องเป็นข้อความทั้งหมด"
+  );
+
+  }
 
   if (!name || !major || !email) {
     return sendError(res, 400, "VALIDATION_ERROR", "กรุณาระบุ name, major และ email ให้ครบถ้วน")
@@ -73,6 +85,11 @@ router.post("/", (req, res) => {
 
    if (!name || name.length < 2) {
     return sendError(res, 400, "VALIDATION_ERROR", "กรุณาระบุ name อย่างน้อย 2 ตัวอักษร");
+
+  }
+
+  if (name.length > 100) {
+    return sendError(res, 400, "VALIDATION_ERROR", "กรุณาระบุ name ไม่เกิน 100 ตัวอักษร");
 
   }
 
