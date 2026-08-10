@@ -1,12 +1,24 @@
 const express = require("express");
 const router = express.Router();
 const sendError = require("../sendError"); // นำเข้าโมดูล sendError
+const rateLimit = require("express-rate-limit");
 
 //ใช้ข้อมูลจากไฟล์ใน data
 const students = require("../data/studentsData") // ตรง ../ --> ย้อนออกไป 1 ชั้นก่อน
 const courses = require("../data/coursesData")
 
 let nextId = 3;
+
+const studentPostLimiter = rateLimit({
+  windowMs: 60 * 1000, // กำหนดช่วงเวลา 1 นาที
+  max: 5,              // อนุญาตสูงสุด 5 ครั้ง
+  message: {
+    error: {
+      code: "TOO_MANY_REQUESTS", // รหัสเมื่อส่งคำขอเกินกำหนด
+      message: "ส่งคำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่",
+    },
+  },
+});
 
 
 /* 1. GET: ดึงรายการนักศึกษาทั้งหมด
@@ -63,10 +75,15 @@ router.get("/:id", (req, res) => {
     - ตรวจสอบ name ต้องเป็นข้อความที่มีความยาวอย่างน้อย 2 ตัวอักษร
     - ถ้ามีนักศึกษาชื่อซ้ำกับข้อมูลที่มีอยู่แล้ว ให้ตอบกลับด้วย Status Code 409 (Conflict) พร้อมข้อความแจ้งเตือน
 */
-router.post("/", (req, res) => {
+router.post("/", studentPostLimiter, (req, res) => {
   const { name, major, email} = req.body;
 
-  if (
+  if (!name || !major || !email) {
+    return sendError(res, 400, "VALIDATION_ERROR", "กรุณาระบุ name, major และ email ให้ครบถ้วน")
+
+  }
+
+    if (
     typeof name !== "string" ||
     typeof major !== "string" ||
     typeof email !== "string" 
@@ -75,11 +92,6 @@ router.post("/", (req, res) => {
     return sendError(res,400,"VALIDATION_ERROR",
 "ข้อมูลต้องเป็นข้อความทั้งหมด"
   );
-
-  }
-
-  if (!name || !major || !email) {
-    return sendError(res, 400, "VALIDATION_ERROR", "กรุณาระบุ name, major และ email ให้ครบถ้วน")
 
   }
 
