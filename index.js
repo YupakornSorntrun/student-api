@@ -6,8 +6,8 @@ const cors = require("cors");
 const morgan = require("morgan");
 
 const studentsRouter = require("./routes/students");
-const coursesRouter = require("./routes/courses");
-const enrollmentsRouter = require("./routes/enrollments");
+//const coursesRouter = require("./routes/courses");
+//const enrollmentsRouter = require("./routes/enrollments");
 //const { graphqlHTTP } = require("express-graphql");
 //const schema = require("./schema");
 //const query = require("./resolvers");
@@ -60,8 +60,8 @@ app.use(requireJson);
 app.use(express.json({ limit: "10kb" }));
 
 app.use("/api/v1/students", studentsRouter);
-app.use("/api/v1/courses", coursesRouter);
-app.use("/api/v1", enrollmentsRouter);
+//app.use("/api/v1/courses", coursesRouter);
+//app.use("/api/v1", enrollmentsRouter);
 
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Student API พร้อมใช้งาน" });
