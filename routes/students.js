@@ -1,25 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const sendError = require("../sendError"); // นำเข้าโมดูล sendError
-const rateLimit = require("express-rate-limit");
-const pool = require("../db");
+const pool = require("../db")
 
-//ใช้ข้อมูลจากไฟล์ใน data
-//const students = require("../data/studentsData") // ตรง ../ --> ย้อนออกไป 1 ชั้นก่อน
-//const courses = require("../data/coursesData")
 
-//let nextId = 3;
-
-const studentPostLimiter = rateLimit({
-  windowMs: 60 * 1000, // กำหนดช่วงเวลา 1 นาที
-  max: 5,              // อนุญาตสูงสุด 5 ครั้ง
-  message: {
-    error: {
-      code: "TOO_MANY_REQUESTS", // รหัสเมื่อส่งคำขอเกินกำหนด
-      message: "ส่งคำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่",
-    },
-  },
-});
+const { authenticateToken, authorizeRole } = require("../middlewares/auth");
 
 
 /* 1. GET: ดึงรายการนักศึกษาทั้งหมด
@@ -254,7 +239,7 @@ router.post("/:id/enrollments-unsafe", async (req, res, next) => {
 });*/
 
 // 5. PATCH: รองรับการแก้ไขข้อมูลบางส่วน ซึ่งแตกต่างจาก PUT ที่ต้องส่งข้อมูลครบทุกฟิลด์
-/*router.patch("/:id", (req, res) => {
+router.patch("/:id", (req, res) => {
   const id = Number(req.params.id);
   const student = students.find((s) => s.id === id);
 
@@ -270,22 +255,29 @@ router.post("/:id/enrollments-unsafe", async (req, res, next) => {
 
   res.status(200).json({ message: "แก้ไขข้อมูลสำเร็จ", data: student});
 });
-*/
+
 
 // 6. DELETE: ลบข้อมูลนักศึกษา
-/*router.delete("/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const index = students.findIndex((s) => s.id === id);
+router.delete("/:id",
+  authenticateToken,
+  authorizeRole("admin"),
+  async (req, res, next) => {
+    try {
+      const [result] = await pool.query("DELETE FROM students WHERE id = ?", [
+        req.params.id,
+      ]);
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "ไม่พบข้อมูลนิสิต" },
+        });
+      }
+      res.status(200).json({ message: "ลบข้อมูลสำเร็จ" });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
-  if (index === -1) {
-    return sendError(res, 404, "STUDENT_NOT_FOUND", "ไม่พบข้อมูลนักศึกษา");
-  }
-
-  students.splice(index, 1);
-
-  res.status(200).json({ message: "ลบข้อมูลสำเร็จ" });
-});
-*/
 
 //แบบฝึกหัด 3 -- DELETE: ลบระเบียนใน enrollments และเพิ่มค่า seat_available ของรายวิชานั้นกลับคืน 1 ที่นั่ง
 router.delete("/:id/enrollments/:courseId", async (req, res, next) => {
