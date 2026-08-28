@@ -4,28 +4,38 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+        "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YupakornSorntrun/student-api.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/YupakornSorntrun/student-api/issues"
+  },
+  "homepage": "https://github.com/YupakornSorntrun/student-api#readme",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-graphql": "^0.12.0",
-    "express-rate-limit": "^8.6.2",
-    "graphql": "^15.10.2",
+    "graphql": "^15.10.3",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
-    "morgan": "^1.11.0",
+    "morgan": "^1.12.0",
     "mysql2": "^3.24.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true
   }
 }

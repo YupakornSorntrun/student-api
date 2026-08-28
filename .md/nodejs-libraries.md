@@ -186,6 +186,19 @@ npm run dev
 
 โดยค่าเริ่มต้น `nodemon` มักเฝ้าดูไฟล์โค้ดเป็นหลัก จึงไม่ควรคาดหวังให้การแก้ `.env` ทำให้ Server รีสตาร์ตเอง หากต้องการให้เฝ้าดู `.env` ด้วย ต้องตั้งค่า `nodemon` เพิ่มเติม
 
+
+
+## Wk-06 : JWT Authentication & RBAC
+
+### 1. ติดตั้ง `jsonwebtoken`
+
+```cmd
+npm install jsonwebtoken bcrypt
+```
+
+- `jsonwebtoken` ใช้สำหรับสร้างและตรวจสอบ JWT
+- `bcrypt` ใช้สำหรับเข้ารหัส (hash) รหัสผ่านก่อนบันทึกลงฐานข้อมูล
+
 ---
 
 ## สรุปรวมคำสั่งติดตั้ง
@@ -195,4 +208,5 @@ npm run dev
 ```cmd
 npm install express express-graphql graphql helmet cors morgan dotenv mysql2
 npm install --save-dev nodemon
+npm install jsonwebtoken bcrypt
 ```
