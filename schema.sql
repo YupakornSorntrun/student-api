@@ -24,3 +24,4 @@ CREATE TABLE enrollments (
   FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
   UNIQUE KEY unique_enrollment (student_id, course_id)
 );
+

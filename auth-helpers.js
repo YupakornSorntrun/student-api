@@ -6,7 +6,7 @@ const SALT_ROUNDS = 10;
 //plainPassword คือที่เราพิมพ์เอง
 async function hashPassword(plainPassword) {
     
-  /* ถ้าอยากรู้ว่าจะขึ้นยังไง ลองมีตัวแปรรับ const addpassword 
+  //ถ้าอยากรู้ว่าจะขึ้นยังไง ลองมีตัวแปรรับ const addpassword 
   const addpassword  = await bcrypt.hash(
     plainPassword,
     SALT_ROUNDS
@@ -16,9 +16,9 @@ async function hashPassword(plainPassword) {
   console.log("Password หลัง Hash:", addpassword);
 
   return addpassword;
-  */
+  
 
-  return await bcrypt.hash(plainPassword, SALT_ROUNDS);
+  //return await bcrypt.hash(plainPassword, SALT_ROUNDS);
 }
 
 async function verifyPassword(plainPassword, hashedPassword) {
