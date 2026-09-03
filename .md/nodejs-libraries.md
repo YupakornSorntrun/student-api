@@ -200,7 +200,21 @@ npm install jsonwebtoken bcrypt
 - `bcrypt` ใช้สำหรับเข้ารหัส (hash) รหัสผ่านก่อนบันทึกลงฐานข้อมูล
 
 ---
+## Wk-07: ติดตั้งไลบรารี 
 
+### In-memory Cache
+
+```cmd
+npm install node-cache
+```
+
+###  Redis
+
+```cmd
+npm install redis
+```
+
+---
 ## สรุปรวมคำสั่งติดตั้ง
 
 หากต้องการติดตั้งทุกไลบรารีครั้งเดียว ให้ใช้:

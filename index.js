@@ -10,6 +10,7 @@ const studentsRouter = require("./routes/students");
 //const enrollmentsRouter = require("./routes/enrollments");
 const authRouter = require("./routes/auth");
 
+
 //const { graphqlHTTP } = require("express-graphql");
 //const schema = require("./schema");
 //const query = require("./resolvers");
@@ -90,6 +91,18 @@ app.use((err, req, res, next) => {
       message: statusCode === 500 ? "เกิดข้อผิดพลาดที่ไม่คาดคิดภายในระบบ" : err.message,
     },
   });
+});
+
+const { redisClient, connectRedis } = require("./cache");
+
+connectRedis().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server กำลังทำงานที่พอร์ต ${PORT})`);
+  });
+})
+.catch((err) => {
+  console.error("เชื่อมต่อ Redis ไม่สำเร็จ เซิร์ฟเวอร์จะไม่เริ่มทำงาน:", err);
+  process.exit(1); // ออกจากโปรแกรมด้วยรหัสข้อผิดพลาด
 });
 
 app.listen(PORT, () => {

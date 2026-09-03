@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const sendError = require("../sendError");
 const pool = require("../db");
+const { redisClient } = require("../cache");
+const { parsePagination, parseSort } = require("../middlewares/query-parser")
 
 const {
   authenticateToken,
@@ -13,11 +15,25 @@ const {
    1. GET: ดึงรายการนักศึกษาทั้งหมด
    ===================================================== */
 router.get("/", async (req, res, next) => {
+  const  cacheKey = "students:all";
+
   try {
-    const [rows] = await pool.query("SELECT * FROM students");
+    const cache = await redisClient.get(cacheKey);
+
+    if (cache) {
+      return res.status(200).json({
+        message: "สำเร็จ (จาก cache)",
+        data: JSON.parse(cache),
+      });
+    }
+
+    const [rows] = await pool.query("SELECT * FROM students"); // เรียก get ก็ query ตลอด ลองใช้ cache ใน week7ดู
+
+    // บันทึกข้อมูลลงใน cache
+    await redisClient.set(cacheKey, JSON.stringify(rows), { EX: 60 }); // บันทึกเป็น JSON และมีอายุ 1 ชั่วโมง
 
     res.status(200).json({
-      message: "สำเร็จ",
+      message: "สำเร็จ (จากฐานข้อมูล)",
       data: rows,
     });
   } catch (err) {
@@ -99,6 +115,8 @@ router.post("/", async (req, res, next) => {
       "INSERT INTO students (name, major, email) VALUES (?, ?, ?)",
       [name, major, email]
     );
+
+    await redisClient.del("students:all"); // ลบ cache ของรายการนักศึกษาทั้งหมด เพื่อให้ข้อมูลใหม่ถูกดึงจากฐานข้อมูลครั้งถัดไป
 
     res.status(201).json({
       message: "เพิ่มข้อมูลสำเร็จ",
