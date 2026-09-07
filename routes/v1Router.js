@@ -10,42 +10,106 @@ const {
   authorizeRole,
 } = require("../middlewares/auth");
 
+const deprecationMiddleware = require("../middlewares/deprecation");
+
+v1Router.use(deprecationMiddleware);
 
 /* =====================================================
    1. GET: ดึงรายการนักศึกษาทั้งหมด
    ===================================================== */
-v1Router.get("/", parsePagination, parseSort, async (req, res, next) => {
-  const  cacheKey = "students:all";
+v1Router.get(
+  "/students",
+  parsePagination,
+  parseSort,
+  async (req, res, next) => {
+    const { major } = req.query;
+    const { page, limit, offset } = req.pagination;
+    const { field, order } = req.sort;
 
-  try {
-    const cache = await redisClient.get(cacheKey);
+    const cacheKey =
+      `students:page=${page}` +
+      `:limit=${limit}` +
+      `:major=${major || ""}` +
+      `:sort=${field}` +
+      `:order=${order}`;
 
-    if (cache) {
-      return res.status(200).json({
-        message: "สำเร็จ (จาก cache)",
-        data: JSON.parse(cache),
+    try {
+      // =========================
+      // 1. Cache Hit
+      // =========================
+      const cached = await redisClient.get(cacheKey);
+
+      if (cached) {
+        return res.status(200).json({
+          message: "สำเร็จ (จาก cache)",
+          ...JSON.parse(cached),
+        });
+      }
+
+      // =========================
+      // 2. Query Database
+      // =========================
+      let baseQuery = "SELECT * FROM students";
+      let countQuery = "SELECT COUNT(*) AS total FROM students";
+
+      const params = [];
+
+      if (major) {
+        baseQuery += " WHERE major = ?";
+        countQuery += " WHERE major = ?";
+        params.push(major);
+      }
+
+      baseQuery += ` ORDER BY ${field} ${order} LIMIT ? OFFSET ?`;
+
+      const [rows] = await pool.query(
+        baseQuery,
+        [...params, limit, offset]
+      );
+
+      const [[{ total }]] = await pool.query(
+        countQuery,
+        params
+      );
+
+      const responseData = {
+        data: rows,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+
+      // =========================
+      // 3. Save Cache
+      // =========================
+      await redisClient.set(
+        cacheKey,
+        JSON.stringify(responseData),
+        {
+          EX: 60,
+        }
+      );
+
+      // =========================
+      // 4. Response
+      // =========================
+      res.status(200).json({
+        message: "สำเร็จ (จากฐานข้อมูล)",
+        ...responseData,
       });
+    } catch (err) {
+      next(err);
     }
-
-    const [rows] = await pool.query("SELECT * FROM students"); // เรียก get ก็ query ตลอด ลองใช้ cache ใน week7ดู
-
-    // บันทึกข้อมูลลงใน cache
-    await redisClient.set(cacheKey, JSON.stringify(rows), { EX: 60 }); // บันทึกเป็น JSON และมีอายุ 1 ชั่วโมง
-
-    res.status(200).json({
-      message: "สำเร็จ (จากฐานข้อมูล)",
-      data: rows,
-    });
-  } catch (err) {
-    next(err);
   }
-});
-
+);
 
 /* =====================================================
    2. GET: ดึงข้อมูลนักศึกษารายบุคคลตาม id
    ===================================================== */
-v1Router.get("/:id", async (req, res, next) => {
+v1Router.get("/students/:id", async (req, res, next) => {
   try {
     const [rows] = await pool.query(
       "SELECT * FROM students WHERE id = ?",
@@ -75,7 +139,7 @@ v1Router.get("/:id", async (req, res, next) => {
    แบบฝึกหัด 1
    GET: ดึงรายวิชาที่นักศึกษาลงทะเบียน
    ===================================================== */
-v1Router.get("/:id/courses", async (req, res, next) => {
+v1Router.get("/students/:id/courses", async (req, res, next) => {
   try {
     const [rows] = await pool.query(
       `SELECT courses.*
@@ -95,10 +159,43 @@ v1Router.get("/:id/courses", async (req, res, next) => {
 });
 
 
+v1Router.get("/courses", async (req, res, next) => {
+  const cacheKey = "courses:all";
+
+  try {
+    // 1. ตรวจสอบ Cache ก่อน
+    const cached = await redisClient.get(cacheKey);
+
+    if (cached) {
+      return res.status(200).json({
+        message: "สำเร็จ (จาก cache)",
+        data: JSON.parse(cached),
+      });
+    }
+
+    // 2. ถ้าไม่มี Cache → Query Database
+    const [rows] = await pool.query("SELECT * FROM courses");
+
+    // 3. เก็บข้อมูลลง Redis
+    await redisClient.set(cacheKey, JSON.stringify(rows), {
+      EX: 120,
+    });
+
+    // 4. ส่งข้อมูลกลับ
+    res.status(200).json({
+      message: "สำเร็จ (จากฐานข้อมูล)",
+      data: rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
 /* =====================================================
    3. POST: เพิ่มข้อมูลนักศึกษาใหม่
    ===================================================== */
-v1Router.post("/", async (req, res, next) => {
+v1Router.post("/students", async (req, res, next) => {
   const { name, major, email } = req.body;
 
   if (!name || !major || !email) {
@@ -145,7 +242,7 @@ v1Router.post("/", async (req, res, next) => {
 /* =====================================================
    POST: ลงทะเบียนเรียนด้วย Transaction
    ===================================================== */
-v1Router.post("/:id/enrollments", async (req, res, next) => {
+v1Router.post("/students/:id/enrollments", async (req, res, next) => {
   const studentId = req.params.id;
   const { courseId } = req.body;
   const connection = await pool.getConnection();
@@ -289,7 +386,7 @@ router.post("/:id/enrollments-unsafe", async (req, res, next) => {
    - ถ้าไม่ใช่เจ้าของ และไม่ใช่ admin → 403
    ===================================================== */
 v1Router.put(
-  "/:id",
+  "/students/:id",
   authenticateToken,
   async (req, res, next) => {
     const studentId = req.params.id;
@@ -382,7 +479,7 @@ v1Router.put(
    หมายเหตุ:
    เปลี่ยนให้ใช้ MySQL แทน students.find()
    ===================================================== */
-v1Router.patch("/:id", async (req, res, next) => {
+v1Router.patch("/students/:id", async (req, res, next) => {
   const studentId = req.params.id;
   const { name, major, email } = req.body;
 
@@ -458,7 +555,7 @@ v1Router.patch("/:id", async (req, res, next) => {
    อนุญาตเฉพาะ admin
    ===================================================== */
 v1Router.delete(
-  "/:id",
+  "/students/:id",
   authenticateToken,
   authorizeRole("admin"),
   async (req, res, next) => {
@@ -494,7 +591,7 @@ v1Router.delete(
    และคืนจำนวนที่นั่งกลับ 1 ที่นั่ง
    ===================================================== */
 v1Router.delete(
-  "/:id/enrollments/:courseId",
+  "/students/:id/enrollments/:courseId",
   async (req, res, next) => {
     const studentId = req.params.id;
     const courseId = req.params.courseId;

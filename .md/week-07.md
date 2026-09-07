@@ -116,3 +116,42 @@ string
 127.0.0.1:6379> KEYS * 
 (empty array)
 ```
+
+
+## แบบฝึกหัด 1-3
+
+### แบบฝึกหัดที่ 1: เพิ่ม Cache ให้กับ Endpoint รายวิชา
+
+Implement caching สำหรับ GET /api/v1/courses ในลักษณะเดียวกับ GET /api/v1/students ในขั้นตอนที่ 2.3 (ตรวจสอบแคชก่อน หากไม่พบให้ query ฐานข้อมูลแล้วเก็บผลลัพธ์ลงแคช) พร้อมกำหนด TTL ที่เหมาะสม (พิจารณาว่ารายวิชาเปลี่ยนแปลงไม่บ่อยเท่านิสิต จึงอาจตั้ง TTL ยาวกว่าได้) ใช้ message แยกแหล่งข้อมูลแบบเดียวกับขั้นตอนที่ 2.3 คือ "สำเร็จ (จาก cache)" และ "สำเร็จ (จากฐานข้อมูล)" เพื่อให้ตรวจสอบผลลัพธ์ได้ตรงตามเกณฑ์ด้านล่าง
+
+```text
+D:\BackEnd\student-api>docker exec -it redis-server redis-cli
+127.0.0.1:6379> KEYS * 
+1) "courses:all"
+127.0.0.1:6379> TTL courses:all 
+(integer) 59
+127.0.0.1:6379> TTL courses:all 
+(integer) 56
+127.0.0.1:6379> 
+```
+
+### แบบฝึกหัดที่ 2: ออกแบบ Cache Key ที่รวมพารามิเตอร์การค้นหา
+
+ปรับปรุง cache key ของ GET /api/v1/students ให้รวมค่าพารามิเตอร์ pagination, filtering และ sorting ทั้งหมด เช่น students:page=1:limit=10:major=CS:sort=name:order=asc เพื่อให้แต่ละชุดเงื่อนไขมีแคชของตัวเองแยกกัน ทดสอบว่าการค้นหาด้วยเงื่อนไขต่างกันไม่ได้ผลลัพธ์จากแคชของเงื่อนไขอื่นมาปะปน
+
+```text
+127.0.0.1:6379> KEYS * 
+1) "students:page=2:limit=2:major=:sort=id:order=ASC"
+2) "students:page=1:limit=2:major=:sort=id:order=ASC"
+127.0.0.1:6379> 
+```
+
+### แบบฝึกหัดที่ 3: เพิ่ม Middleware ตรวจสอบ Header Deprecation
+
+เพิ่ม middleware ให้กับ v1Router ที่แนบ Header Deprecation (ค่าเป็น Unix timestamp นำหน้าด้วย @ ตาม RFC 9745 เช่น @1735689600 ไม่ใช่ true) และ Link: </api/v2/students>; rel="successor-version" ในทุก response เพื่อแจ้งเตือน client ว่าเวอร์ชันนี้กำลังจะถูกเลิกใช้ในอนาคตและควรย้ายไปใช้ v2 แทน
+
+### /api/v1
+![v1](/images/wk07-ch-3(v1).png)
+
+### /api/v2
+![v2](/images/wk07-ch-3(v2).png)
