@@ -5,7 +5,9 @@ const SALT_ROUNDS = 10;
 
 //plainPassword คือที่เราพิมพ์เอง
 async function hashPassword(plainPassword) {
-    
+  
+  if (plainPassword.length < 8 ) return "รหัสผ่านไม่น้อยกว่า 8 ตัว" 
+  
   //ถ้าอยากรู้ว่าจะขึ้นยังไง ลองมีตัวแปรรับ const addpassword 
   const addpassword  = await bcrypt.hash(
     plainPassword,
