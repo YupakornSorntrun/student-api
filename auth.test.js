@@ -1,5 +1,8 @@
+require("dotenv").config();
 const request = require("supertest");
 const app = require("./app");
+
+
 
 describe("POST /api/v1/auth/register", () => {
   test("ควรคืน 201 เมื่อข้อมูลถูกต้องและครบถ้วน", async () => {
@@ -78,4 +81,8 @@ describe("GET /api/v1/auth/me", () => {
     expect(response.status).toBe(200);
     expect(response.body.data.email).toBe(uniqueEmail);
   });
+});
+
+afterAll(async () => {
+  await pool.end();
 });

@@ -1,3 +1,4 @@
+require("dotenv").config();
 jest.mock("./db");
 const pool = require("./db");
 const request = require("supertest");

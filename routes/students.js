@@ -1,5 +1,5 @@
 const express = require("express");
-const v1Router = express.Router();
+const router = express.Router();
 const sendError = require("../sendError");
 const pool = require("../db");
 const { redisClient } = require("../cache");
@@ -14,7 +14,7 @@ const {
 /* =====================================================
    1. GET: ดึงรายการนักศึกษาทั้งหมด
    ===================================================== */
-v1Router.get("/", parsePagination, parseSort, async (req, res, next) => {
+router.get("/", parsePagination, parseSort, async (req, res, next) => {
   const  cacheKey = "students:all";
 
   try {
@@ -45,7 +45,7 @@ v1Router.get("/", parsePagination, parseSort, async (req, res, next) => {
 /* =====================================================
    2. GET: ดึงข้อมูลนักศึกษารายบุคคลตาม id
    ===================================================== */
-v1Router.get("/:id", async (req, res, next) => {
+router.get("/:id", async (req, res, next) => {
   try {
     const [rows] = await pool.query(
       "SELECT * FROM students WHERE id = ?",
@@ -75,7 +75,7 @@ v1Router.get("/:id", async (req, res, next) => {
    แบบฝึกหัด 1
    GET: ดึงรายวิชาที่นักศึกษาลงทะเบียน
    ===================================================== */
-v1Router.get("/:id/courses", async (req, res, next) => {
+router.get("/:id/courses", async (req, res, next) => {
   try {
     const [rows] = await pool.query(
       `SELECT courses.*
@@ -98,7 +98,7 @@ v1Router.get("/:id/courses", async (req, res, next) => {
 /* =====================================================
    3. POST: เพิ่มข้อมูลนักศึกษาใหม่
    ===================================================== */
-v1Router.post("/", async (req, res, next) => {
+router.post("/", async (req, res, next) => {
   const { name, major, email } = req.body;
 
   if (!name || !major || !email) {
@@ -145,7 +145,7 @@ v1Router.post("/", async (req, res, next) => {
 /* =====================================================
    POST: ลงทะเบียนเรียนด้วย Transaction
    ===================================================== */
-v1Router.post("/:id/enrollments", async (req, res, next) => {
+router.post("/:id/enrollments", async (req, res, next) => {
   const studentId = req.params.id;
   const { courseId } = req.body;
   const connection = await pool.getConnection();
@@ -288,7 +288,7 @@ router.post("/:id/enrollments-unsafe", async (req, res, next) => {
    - เปรียบเทียบ req.user.id กับ student.user_id
    - ถ้าไม่ใช่เจ้าของ และไม่ใช่ admin → 403
    ===================================================== */
-v1Router.put(
+router.put(
   "/:id",
   authenticateToken,
   async (req, res, next) => {
@@ -382,7 +382,7 @@ v1Router.put(
    หมายเหตุ:
    เปลี่ยนให้ใช้ MySQL แทน students.find()
    ===================================================== */
-v1Router.patch("/:id", async (req, res, next) => {
+router.patch("/:id", async (req, res, next) => {
   const studentId = req.params.id;
   const { name, major, email } = req.body;
 
@@ -457,7 +457,7 @@ v1Router.patch("/:id", async (req, res, next) => {
    6. DELETE: ลบข้อมูลนักศึกษา
    อนุญาตเฉพาะ admin
    ===================================================== */
-v1Router.delete(
+router.delete(
   "/:id",
   authenticateToken,
   authorizeRole("admin"),
@@ -493,7 +493,7 @@ v1Router.delete(
    DELETE: ยกเลิกการลงทะเบียน
    และคืนจำนวนที่นั่งกลับ 1 ที่นั่ง
    ===================================================== */
-v1Router.delete(
+router.delete(
   "/:id/enrollments/:courseId",
   async (req, res, next) => {
     const studentId = req.params.id;
@@ -546,4 +546,4 @@ v1Router.delete(
 );
 
 
-module.exports = v1Router;
+module.exports = router;

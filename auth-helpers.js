@@ -9,7 +9,7 @@ async function hashPassword(plainPassword) {
   if (plainPassword.length < 8 ) return "รหัสผ่านไม่น้อยกว่า 8 ตัว" 
   
   //ถ้าอยากรู้ว่าจะขึ้นยังไง ลองมีตัวแปรรับ const addpassword 
-  const addpassword  = await bcrypt.hash(
+  /*const addpassword  = await bcrypt.hash(
     plainPassword,
     SALT_ROUNDS
   )
@@ -18,9 +18,8 @@ async function hashPassword(plainPassword) {
   console.log("Password หลัง Hash:", addpassword);
 
   return addpassword;
-  
-
-  //return await bcrypt.hash(plainPassword, SALT_ROUNDS);
+  */
+ return await bcrypt.hash(plainPassword, SALT_ROUNDS);
 }
 
 async function verifyPassword(plainPassword, hashedPassword) {

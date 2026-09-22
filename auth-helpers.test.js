@@ -14,14 +14,14 @@ describe("hashPassword และ verifyPassword", () => {
   });
 
   
-  test("verifyPassword ควรคืนค่า true เมื่อรหัสผ่านถูกต้อง", async () => {
-    const hashed = await hashPassword("Passw0rd!");
+  test("Password ไม่น้อยกว่า 8 ตัว", async () => {
+    const result = await hashPassword("Passw0r");
     expect(result).toBe("รหัสผ่านไม่น้อยกว่า 8 ตัว");
   });
 
-  test("Password ไม่น้อยกว่า 8 ตัว", async () => {
-    const hashed = await hashPassword("Passw0r");
-    const result = await verifyPassword("Passw0r", hashed);
+  test("verifyPassword ควรคืนค่า true เมื่อรหัสผ่านถูกต้อง", async () => {
+    const hashed = await hashPassword("Passw0rd!");
+    const result = await verifyPassword("Passw0rd!", hashed);
     expect(result).toBe(true);
   });
 
