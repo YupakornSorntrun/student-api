@@ -312,68 +312,6 @@ v1Router.post("/students/:id/enrollments", async (req, res, next) => {
 });
 
 
-/* =====================================================
-   แบบฝึกหัด 2 (สัปดาห์ก่อน)
-   POST: ทดสอบการลงทะเบียนแบบไม่ใช้ Transaction
-   ===================================================== */
-/*
-router.post("/:id/enrollments-unsafe", async (req, res, next) => {
-  const studentId = req.params.id;
-  const { courseId } = req.body;
-
-  try {
-    const [courseRows] = await pool.query(
-      "SELECT * FROM courses WHERE id = ?",
-      [courseId]
-    );
-
-    if (courseRows.length === 0) {
-      return res.status(404).json({
-        error: {
-          code: "COURSE_NOT_FOUND",
-          message: "ไม่พบรายวิชาที่ระบุ",
-        },
-      });
-    }
-
-    if (courseRows[0].seat_available <= 0) {
-      return res.status(409).json({
-        error: {
-          code: "SEAT_FULL",
-          message: "ที่นั่งเต็มแล้ว",
-        },
-      });
-    }
-
-    await pool.query(
-      "INSERT INTO enrollments (student_id, course_id) VALUES (?, ?)",
-      [studentId, courseId]
-    );
-
-    await pool.query(
-      "UPDATE courses SET seat_available = seat_available - 1 WHERE id = ?",
-      [courseId]
-    );
-
-    res.status(201).json({
-      message: "ลงทะเบียนสำเร็จ",
-    });
-
-  } catch (err) {
-    if (err.code === "ER_DUP_ENTRY") {
-      return res.status(409).json({
-        error: {
-          code: "ALREADY_ENROLLED",
-          message: "นักศึกษาลงทะเบียนรายวิชานี้ไปแล้ว",
-        },
-      });
-    }
-
-    next(err);
-  }
-});
-*/
-
 
 /* =====================================================
    4. PUT: แก้ไขข้อมูลนักศึกษาทั้งระเบียน

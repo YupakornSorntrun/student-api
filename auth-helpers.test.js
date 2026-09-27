@@ -1,4 +1,4 @@
-require("dotenv").config(); //เพิ่มเข้ามาเพื่ออ่านไฟล์ .env
+require("dotenv").config();
 
 const {
   hashPassword,
@@ -13,7 +13,6 @@ describe("hashPassword และ verifyPassword", () => {
     expect(hashed).not.toBe("Passw0rd!");
   });
 
-  
   test("Password ไม่น้อยกว่า 8 ตัว", async () => {
     const result = await hashPassword("Passw0r");
     expect(result).toBe("รหัสผ่านไม่น้อยกว่า 8 ตัว");
@@ -32,7 +31,7 @@ describe("hashPassword และ verifyPassword", () => {
   });
 });
 
-/*describe("generateToken", () => {
+describe("generateToken", () => {
   test("ควรสร้าง token ที่มี payload ตรงกับข้อมูลผู้ใช้", () => {
     const user = { id: 1, email: "test@example.com", role: "student" };
     const token = generateToken(user);
@@ -42,4 +41,4 @@ describe("hashPassword และ verifyPassword", () => {
     expect(decoded.email).toBe(user.email);
     expect(decoded.role).toBe(user.role);
   });
-});*/
+});

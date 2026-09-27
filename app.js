@@ -2,12 +2,9 @@ const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
 
-//const morgan = require("morgan");
-
-
 const authRouter = require("./routes/auth");
-//const v1Router = require("./routes/v1Router");
-//const v2Router = require("./routes/v2Router");
+const v1Router = require("./routes/v1Router");
+const v2Router = require("./routes/v2Router");
 
 const app = express();
 
@@ -15,10 +12,9 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-
 app.use("/api/v1/auth", authRouter);
-//app.use("/api/v1", v1Router);
-//app.use("/api/v2", v2Router);
+app.use("/api/v1", v1Router);
+app.use("/api/v2", v2Router);
 
 
 app.get("/", (req, res) => {
