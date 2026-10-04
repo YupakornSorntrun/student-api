@@ -1,6 +1,14 @@
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("js-yaml");
+const fs = require("fs");
+const path = require("path");
+
+const openapiDocument = YAML.load(
+  fs.readFileSync(path.join(__dirname, "openapi.yaml"), "utf8"),
+);
 
 const authRouter = require("./routes/auth");
 const v1Router = require("./routes/v1Router");
@@ -11,6 +19,8 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openapiDocument));
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1", v1Router);

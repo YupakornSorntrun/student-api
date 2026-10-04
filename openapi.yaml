@@ -1,0 +1,209 @@
+openapi: 3.0.3
+info:
+  title: Student API
+  description: API สำหรับจัดการข้อมูลนิสิต พัฒนาในรายวิชา 88736065
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+paths:
+  /auth/register:
+    post:
+      summary: ลงทะเบียนนักศึกษาใหม่
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: "student1@example.com"
+                password:
+                  type: string
+                  example: "Passw0rd!"
+      responses:
+        '201':
+          description: ลงทะเบียนสำเร็จ
+        '400':
+          description: ข้อมูลไม่ครบถ้วน
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email ซ้ำ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: เกิดข้อผิดพลาดภายในระบบ
+  /auth/login:
+    post:
+      summary: เข้าสู่ระบบ
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: "student1@example.com"
+                password:
+                  type: string
+                  example: "Passw0rd!"
+      responses:
+        '200':
+          description: เข้าสู่ระบบสำเร็จ ได้รับ Token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+        '400':
+          description: ข้อมูลไม่ครบถ้วน
+        '401':
+          description: อีเมลหรือรหัสผ่านไม่ถูกต้อง
+  /auth/me:
+    get:
+      summary: ดูข้อมูลส่วนตัว
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ข้อมูลผู้ใช้
+        '401':
+          description: ไม่พบ Token หรือ Token ไม่ถูกต้อง
+  /students:
+    get:
+      summary: ดึงข้อมูลนักศึกษาทั้งหมด
+      tags: [Students]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: หมายเลขหน้า
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: จำนวนข้อมูลต่อหน้า
+      responses:
+        '200':
+          description: รายการนักศึกษา
+        '401':
+          description: Unauthorized
+    post:
+      summary: เพิ่มนักศึกษาใหม่
+      tags: [Students]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "สมชาย"
+                email:
+                  type: string
+                  example: "somchai@example.com"
+                major:
+                  type: string
+                  example: "CS"
+      responses:
+        '201':
+          description: เพิ่มนักศึกษาสำเร็จ
+        '400':
+          description: ข้อมูลไม่ครบถ้วน
+        '403':
+          description: Forbidden (เฉพาะ admin/teacher)
+        '409':
+          description: Email ซ้ำ
+  /students/{id}:
+    put:
+      summary: แก้ไขข้อมูลนักศึกษา
+      tags: [Students]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID ของนักศึกษา
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                major:
+                  type: string
+      responses:
+        '200':
+          description: แก้ไขข้อมูลสำเร็จ
+        '403':
+          description: Forbidden
+        '404':
+          description: ไม่พบนักศึกษา
+    delete:
+      summary: ลบข้อมูลนักศึกษา
+      tags: [Students]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID ของนักศึกษา
+      responses:
+        '200':
+          description: ลบข้อมูลสำเร็จ
+        '403':
+          description: Forbidden (เฉพาะ admin)
+        '404':
+          description: ไม่พบนักศึกษา
