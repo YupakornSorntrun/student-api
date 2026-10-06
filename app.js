@@ -11,6 +11,7 @@ const openapiDocument = YAML.load(
 );
 
 const authRouter = require("./routes/auth");
+const studentRouter = require("./routes/students");
 const v1Router = require("./routes/v1Router");
 const v2Router = require("./routes/v2Router");
 
@@ -24,6 +25,8 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openapiDocument));
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1", v1Router);
+// mount หลัง v1Router เพื่อไม่ให้บัง route /students เดิม (ใช้เฉพาะ /:id/enrichment)
+app.use("/api/v1/students", studentRouter);
 app.use("/api/v2", v2Router);
 
 
