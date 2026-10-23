@@ -21,8 +21,13 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+const { authLimiter, generalLimiter } = require("./middlewares/rateLimiter");
+app.set("trust proxy", 1);
+app.use(generalLimiter);
+
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openapiDocument));
 
+app.use("/api/v1/auth/login", authLimiter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1", v1Router);
 // mount หลัง v1Router เพื่อไม่ให้บัง route /students เดิม (ใช้เฉพาะ /:id/enrichment)
