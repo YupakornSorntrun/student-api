@@ -1,14 +1,12 @@
 const express = require("express");
 const v1Router = express.Router();
+const { createStudentSchema } = require("../schemas/studentSchema");
 const sendError = require("../sendError");
 const pool = require("../db");
 const { redisClient } = require("../cache");
 const { parsePagination, parseSort } = require("../middlewares/query-parser");
 
-const {
-  authenticateToken,
-  authorizeRole,
-} = require("../middlewares/auth");
+const { authenticateToken, authorizeRole } = require("../middlewares/auth");
 
 const deprecationMiddleware = require("../middlewares/deprecation");
 
@@ -62,15 +60,9 @@ v1Router.get(
 
       baseQuery += ` ORDER BY ${field} ${order} LIMIT ? OFFSET ?`;
 
-      const [rows] = await pool.query(
-        baseQuery,
-        [...params, limit, offset]
-      );
+      const [rows] = await pool.query(baseQuery, [...params, limit, offset]);
 
-      const [[{ total }]] = await pool.query(
-        countQuery,
-        params
-      );
+      const [[{ total }]] = await pool.query(countQuery, params);
 
       const responseData = {
         data: rows,
@@ -85,13 +77,9 @@ v1Router.get(
       // =========================
       // 3. Save Cache
       // =========================
-      await redisClient.set(
-        cacheKey,
-        JSON.stringify(responseData),
-        {
-          EX: 60,
-        }
-      );
+      await redisClient.set(cacheKey, JSON.stringify(responseData), {
+        EX: 60,
+      });
 
       // =========================
       // 4. Response
@@ -103,7 +91,7 @@ v1Router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /* =====================================================
@@ -111,10 +99,9 @@ v1Router.get(
    ===================================================== */
 v1Router.get("/students/:id", async (req, res, next) => {
   try {
-    const [rows] = await pool.query(
-      "SELECT * FROM students WHERE id = ?",
-      [req.params.id]
-    );
+    const [rows] = await pool.query("SELECT * FROM students WHERE id = ?", [
+      req.params.id,
+    ]);
 
     if (rows.length === 0) {
       return res.status(404).json({
@@ -134,7 +121,6 @@ v1Router.get("/students/:id", async (req, res, next) => {
   }
 });
 
-
 /* =====================================================
    แบบฝึกหัด 1
    GET: ดึงรายวิชาที่นักศึกษาลงทะเบียน
@@ -146,7 +132,7 @@ v1Router.get("/students/:id/courses", async (req, res, next) => {
        FROM courses
        JOIN enrollments ON courses.id = enrollments.course_id
        WHERE enrollments.student_id = ?`,
-      [req.params.id]
+      [req.params.id],
     );
 
     res.status(200).json({
@@ -157,7 +143,6 @@ v1Router.get("/students/:id/courses", async (req, res, next) => {
     next(err);
   }
 });
-
 
 v1Router.get("/courses", async (req, res, next) => {
   const cacheKey = "courses:all";
@@ -191,26 +176,30 @@ v1Router.get("/courses", async (req, res, next) => {
   }
 });
 
-
 /* =====================================================
    3. POST: เพิ่มข้อมูลนักศึกษาใหม่
    ===================================================== */
 v1Router.post("/students", async (req, res, next) => {
-  const { name, major, email } = req.body;
-
-  if (!name || !major || !email) {
+  const result = createStudentSchema.safeParse(req.body); //เพิ่ม week12: createStudentSchema.safeParse(req.body) เพื่อ validate ข้อมูลที่ส่งมา
+  if (!result.success) {
     return res.status(400).json({
       error: {
         code: "VALIDATION_ERROR",
-        message: "กรุณาระบุข้อมูลให้ครบถ้วน",
+        message: "ข้อมูลที่ส่งมาไม่ถูกต้อง",
+        details: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
       },
     });
   }
 
+  const { name, major, email } = result.data;
+
   try {
     const [result] = await pool.query(
       "INSERT INTO students (name, major, email) VALUES (?, ?, ?)",
-      [name, major, email]
+      [name, major, email],
     );
 
     await redisClient.del("students:all"); // ลบ cache ของรายการนักศึกษาทั้งหมด เพื่อให้ข้อมูลใหม่ถูกดึงจากฐานข้อมูลครั้งถัดไป
@@ -238,7 +227,6 @@ v1Router.post("/students", async (req, res, next) => {
   }
 });
 
-
 /* =====================================================
    POST: ลงทะเบียนเรียนด้วย Transaction
    ===================================================== */
@@ -252,7 +240,7 @@ v1Router.post("/students/:id/enrollments", async (req, res, next) => {
 
     const [courseRows] = await connection.query(
       "SELECT * FROM courses WHERE id = ? FOR UPDATE",
-      [courseId]
+      [courseId],
     );
 
     if (courseRows.length === 0) {
@@ -279,12 +267,12 @@ v1Router.post("/students/:id/enrollments", async (req, res, next) => {
 
     await connection.query(
       "INSERT INTO enrollments (student_id, course_id) VALUES (?, ?)",
-      [studentId, courseId]
+      [studentId, courseId],
     );
 
     await connection.query(
       "UPDATE courses SET seat_available = seat_available - 1 WHERE id = ?",
-      [courseId]
+      [courseId],
     );
 
     await connection.commit();
@@ -292,7 +280,6 @@ v1Router.post("/students/:id/enrollments", async (req, res, next) => {
     res.status(201).json({
       message: "ลงทะเบียนสำเร็จ",
     });
-
   } catch (err) {
     await connection.rollback();
 
@@ -311,8 +298,6 @@ v1Router.post("/students/:id/enrollments", async (req, res, next) => {
   }
 });
 
-
-
 /* =====================================================
    4. PUT: แก้ไขข้อมูลนักศึกษาทั้งระเบียน
 
@@ -323,157 +308,70 @@ v1Router.post("/students/:id/enrollments", async (req, res, next) => {
    - เปรียบเทียบ req.user.id กับ student.user_id
    - ถ้าไม่ใช่เจ้าของ และไม่ใช่ admin → 403
    ===================================================== */
-v1Router.put(
-  "/students/:id",
-  authenticateToken,
-  async (req, res, next) => {
-    const studentId = req.params.id;
-    const { name, major, email } = req.body;
-
-    try {
-      // 1. ค้นหาข้อมูลนักศึกษาก่อน
-      const [rows] = await pool.query(
-        "SELECT * FROM students WHERE id = ?",
-        [studentId]
-      );
-
-      // 2. ตรวจสอบว่าพบข้อมูลหรือไม่
-      if (rows.length === 0) {
-        return res.status(404).json({
-          error: {
-            code: "STUDENT_NOT_FOUND",
-            message: "ไม่พบข้อมูลนักศึกษา",
-          },
-        });
-      }
-
-      const student = rows[0];
-
-      // 3. ตรวจสอบสิทธิ์
-      // ถ้าไม่ใช่เจ้าของข้อมูล และไม่ใช่ admin
-      if (
-        req.user.id !== student.user_id &&
-        req.user.role !== "admin"
-      ) {
-        return res.status(403).json({
-          error: {
-            code: "FORBIDDEN",
-            message: "คุณไม่มีสิทธิ์แก้ไขข้อมูลนักศึกษาคนนี้",
-          },
-        });
-      }
-
-      // 4. ตรวจสอบข้อมูลที่ส่งมา
-      if (!name || !major || !email) {
-        return res.status(400).json({
-          error: {
-            code: "VALIDATION_ERROR",
-            message: "กรุณาระบุ name, major และ email ให้ครบถ้วน",
-          },
-        });
-      }
-
-      // 5. อัปเดตข้อมูล
-      await pool.query(
-        `UPDATE students
-         SET name = ?, major = ?, email = ?
-         WHERE id = ?`,
-        [name, major, email, studentId]
-      );
-
-      // 6. ส่งผลลัพธ์
-      res.status(200).json({
-        message: "แก้ไขข้อมูลสำเร็จ",
-        data: {
-          id: Number(studentId),
-          name,
-          major,
-          email,
-          user_id: student.user_id,
-        },
-      });
-
-    } catch (err) {
-
-      // ตรวจสอบ email ซ้ำ
-      if (err.code === "ER_DUP_ENTRY") {
-        return res.status(409).json({
-          error: {
-            code: "DUPLICATE_EMAIL",
-            message: "อีเมลนี้มีอยู่ในระบบแล้ว",
-          },
-        });
-      }
-
-      next(err);
-    }
-  }
-);
-
-
-/* =====================================================
-   5. PATCH: แก้ไขข้อมูลบางส่วน
-
-   หมายเหตุ:
-   เปลี่ยนให้ใช้ MySQL แทน students.find()
-   ===================================================== */
-v1Router.patch("/students/:id", async (req, res, next) => {
+v1Router.put("/students/:id", authenticateToken, async (req, res, next) => {
   const studentId = req.params.id;
   const { name, major, email } = req.body;
 
   try {
-    // ตรวจสอบว่ามีนักศึกษาหรือไม่
-    const [rows] = await pool.query(
-      "SELECT * FROM students WHERE id = ?",
-      [studentId]
-    );
+    // 1. ค้นหาข้อมูลนักศึกษาก่อน
+    const [rows] = await pool.query("SELECT * FROM students WHERE id = ?", [
+      studentId,
+    ]);
 
+    // 2. ตรวจสอบว่าพบข้อมูลหรือไม่
     if (rows.length === 0) {
-      return sendError(
-        res,
-        404,
-        "STUDENT_NOT_FOUND",
-        "ไม่พบข้อมูลนักศึกษา"
-      );
+      return res.status(404).json({
+        error: {
+          code: "STUDENT_NOT_FOUND",
+          message: "ไม่พบข้อมูลนักศึกษา",
+        },
+      });
     }
 
     const student = rows[0];
 
-    // ใช้ค่าเดิม หากไม่ได้ส่งฟิลด์นั้นมา
-    const updatedName =
-      name !== undefined ? name : student.name;
+    // 3. ตรวจสอบสิทธิ์
+    // ถ้าไม่ใช่เจ้าของข้อมูล และไม่ใช่ admin
+    if (req.user.id !== student.user_id && req.user.role !== "admin") {
+      return res.status(403).json({
+        error: {
+          code: "FORBIDDEN",
+          message: "คุณไม่มีสิทธิ์แก้ไขข้อมูลนักศึกษาคนนี้",
+        },
+      });
+    }
 
-    const updatedMajor =
-      major !== undefined ? major : student.major;
+    // 4. ตรวจสอบข้อมูลที่ส่งมา
+    if (!name || !major || !email) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "กรุณาระบุ name, major และ email ให้ครบถ้วน",
+        },
+      });
+    }
 
-    const updatedEmail =
-      email !== undefined ? email : student.email;
-
-    // อัปเดตข้อมูล
+    // 5. อัปเดตข้อมูล
     await pool.query(
       `UPDATE students
-       SET name = ?, major = ?, email = ?
-       WHERE id = ?`,
-      [
-        updatedName,
-        updatedMajor,
-        updatedEmail,
-        studentId,
-      ]
+         SET name = ?, major = ?, email = ?
+         WHERE id = ?`,
+      [name, major, email, studentId],
     );
 
+    // 6. ส่งผลลัพธ์
     res.status(200).json({
       message: "แก้ไขข้อมูลสำเร็จ",
       data: {
         id: Number(studentId),
-        name: updatedName,
-        major: updatedMajor,
-        email: updatedEmail,
+        name,
+        major,
+        email,
+        user_id: student.user_id,
       },
     });
-
   } catch (err) {
-
+    // ตรวจสอบ email ซ้ำ
     if (err.code === "ER_DUP_ENTRY") {
       return res.status(409).json({
         error: {
@@ -487,6 +385,65 @@ v1Router.patch("/students/:id", async (req, res, next) => {
   }
 });
 
+/* =====================================================
+   5. PATCH: แก้ไขข้อมูลบางส่วน
+
+   หมายเหตุ:
+   เปลี่ยนให้ใช้ MySQL แทน students.find()
+   ===================================================== */
+v1Router.patch("/students/:id", async (req, res, next) => {
+  const studentId = req.params.id;
+  const { name, major, email } = req.body;
+
+  try {
+    // ตรวจสอบว่ามีนักศึกษาหรือไม่
+    const [rows] = await pool.query("SELECT * FROM students WHERE id = ?", [
+      studentId,
+    ]);
+
+    if (rows.length === 0) {
+      return sendError(res, 404, "STUDENT_NOT_FOUND", "ไม่พบข้อมูลนักศึกษา");
+    }
+
+    const student = rows[0];
+
+    // ใช้ค่าเดิม หากไม่ได้ส่งฟิลด์นั้นมา
+    const updatedName = name !== undefined ? name : student.name;
+
+    const updatedMajor = major !== undefined ? major : student.major;
+
+    const updatedEmail = email !== undefined ? email : student.email;
+
+    // อัปเดตข้อมูล
+    await pool.query(
+      `UPDATE students
+       SET name = ?, major = ?, email = ?
+       WHERE id = ?`,
+      [updatedName, updatedMajor, updatedEmail, studentId],
+    );
+
+    res.status(200).json({
+      message: "แก้ไขข้อมูลสำเร็จ",
+      data: {
+        id: Number(studentId),
+        name: updatedName,
+        major: updatedMajor,
+        email: updatedEmail,
+      },
+    });
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({
+        error: {
+          code: "DUPLICATE_EMAIL",
+          message: "อีเมลนี้มีอยู่ในระบบแล้ว",
+        },
+      });
+    }
+
+    next(err);
+  }
+});
 
 /* =====================================================
    6. DELETE: ลบข้อมูลนักศึกษา
@@ -498,10 +455,9 @@ v1Router.delete(
   authorizeRole("admin"),
   async (req, res, next) => {
     try {
-      const [result] = await pool.query(
-        "DELETE FROM students WHERE id = ?",
-        [req.params.id]
-      );
+      const [result] = await pool.query("DELETE FROM students WHERE id = ?", [
+        req.params.id,
+      ]);
 
       if (result.affectedRows === 0) {
         return res.status(404).json({
@@ -515,13 +471,11 @@ v1Router.delete(
       res.status(200).json({
         message: "ลบข้อมูลสำเร็จ",
       });
-
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
-
 
 /* =====================================================
    แบบฝึกหัด 3
@@ -542,7 +496,7 @@ v1Router.delete(
       // ลบข้อมูลการลงทะเบียน
       const [result] = await connection.query(
         "DELETE FROM enrollments WHERE student_id = ? AND course_id = ?",
-        [studentId, courseId]
+        [studentId, courseId],
       );
 
       // ถ้าไม่พบข้อมูลการลงทะเบียน
@@ -560,7 +514,7 @@ v1Router.delete(
       // เพิ่มจำนวนที่นั่งกลับ 1
       await connection.query(
         "UPDATE courses SET seat_available = seat_available + 1 WHERE id = ?",
-        [courseId]
+        [courseId],
       );
 
       // ยืนยันการเปลี่ยนแปลง
@@ -569,16 +523,13 @@ v1Router.delete(
       res.status(200).json({
         message: "ยกเลิกการลงทะเบียนสำเร็จ",
       });
-
     } catch (err) {
       await connection.rollback();
       next(err);
-
     } finally {
       connection.release();
     }
-  }
+  },
 );
-
 
 module.exports = v1Router;
